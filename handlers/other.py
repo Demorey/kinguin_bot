@@ -4,7 +4,7 @@ from create_bot import bot, chat_id
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from config import API_TOKEN
 
-"""Выгружаем в словарь все игры которые нужно проверять"""
+"""Выгружаем в словарь все продукты которые нужно проверять"""
 
 
 def get_prod_list():
@@ -13,7 +13,23 @@ def get_prod_list():
     return prod_list
 
 
-"""Получаем название игры по ее id"""
+"""Получаем данные по продукту по его id"""
+
+
+def get_prod(product_id):
+    headers = {
+        'X-Api-Key': API_TOKEN
+    }
+    response = requests.get(f'https://gateway.kinguin.net/esa/api/v1/products/{product_id}',
+                            headers=headers)
+    if response.status_code in (404, 400):
+        return None
+    else:
+        prod = json.loads(response.content)
+        return prod
+
+
+"""Получаем название продукта по его id"""
 
 
 def get_prod_name(product_id):
@@ -22,7 +38,7 @@ def get_prod_name(product_id):
     }
     response = requests.get(f'https://gateway.kinguin.net/esa/api/v1/products/{product_id}',
                             headers=headers)
-    if response.status_code == 404:
+    if response.status_code in (404, 400):
         return None
     else:
         prod = json.loads(response.content)
@@ -38,32 +54,29 @@ def get_prod_qty(product_id):
     }
     response = requests.get(f'https://gateway.kinguin.net/esa/api/v1/products/{product_id}',
                             headers=headers)
-    if response.status_code == 404:
+    if response.status_code in (404, 400):
         return None
     else:
         prod = json.loads(response.content)
         return prod['qty']
 
 
-"""Парсим в список данных по каждой игре"""
+"""Парсим в список данные по каждому продукту"""
 
 
-def get_all_products(prod_list):
+def get_all_products(prod_list=None, prod_id=None):
     all_games_list = []
-    for product in prod_list:
-        product_id = product['id']
-        headers = {
-            'X-Api-Key': API_TOKEN
-        }
-        response = requests.get(f'https://gateway.kinguin.net/esa/api/v1/products/{product_id}',
-                                headers=headers)
-
-        prod = json.loads(response.content)
-        # print(prod)
+    if prod_id:
+        prod = get_prod(prod_id)
         all_games_list.append(prod)
+    else:
+        for product in prod_list:
+            product_id = product['id']
+            prod = get_prod(product_id)
+            all_games_list.append(prod)
 
-        # with open('test.json', 'w') as f:
-        #     json.dump(all_games_list, f, indent=2)
+            # with open('test.json', 'w') as f:
+            #     json.dump(all_games_list, f, indent=2)
 
     return all_games_list
 
@@ -73,69 +86,80 @@ def get_all_products(prod_list):
         all_games_list - это список с данными по каждой игре полученными от сервера"""
 
 
-async def check_prod(prod_list, game, checking_prod, check_now=0):
-    """Проверяем была ли начала проверка по команде check"""
+async def check_prod(check_now=0, prod_id=None):
+    prod_list = None
+    if not prod_id:
+        prod_list = get_prod_list()
+        all_games_list = get_all_products(prod_list=prod_list)
+    else:
+        all_games_list = get_all_products(prod_id=prod_id)
 
-    if not check_now:
+    for game in all_games_list:
+        if prod_list:
+            checking_prod = prod_list[all_games_list.index(game)]
 
-        """Проверяем что если у игры активна опция skip, то сообщение о ней будет отправлено
-        только если самая низкая цена не изменилась с прошлой проверки"""
-        # print(game['name'], game['price'], checking_prod['last_price'])
-        # if game['price'] == checking_prod['last_price'] and checking_prod['skip'] == 1:
-        if game['price'] == checking_prod['last_price']:
-            return
+            """Проверяем была ли начала проверка по команде check"""
+            if not check_now:
 
-    product = game['name']
-    merchantName = game["merchantName"][0]
-    productId = None
-    totalQty = game['totalQty']
+                """Проверяем что самая низкая цена не изменилась с прошлой проверки, иначе вывести уведомление"""
+                # print(game['name'], game['price'], checking_prod['last_price'])
+                # if game['price'] == checking_prod['last_price'] and checking_prod['skip'] == 1:
+                if game['price'] == checking_prod['last_price']:
+                    return
 
-    """Создаем вложенный список формата [цена, имя продаца, остатки этого продавца по этой игре]
-        затем сортируем список по возрастанию цены"""
-    s_l = []
-    ost = 0
-    # ex = 0
-    for offer in game['offers']:
-        s_l.append([offer['price'], offer['merchantName'], offer['qty']])
-        if offer['merchantName'] == 'Sar Sar':
-            # ex = offer['price']
-            ost = offer['qty']
-            productId = offer['offerId']
-    s_l.sort()
-    # print(s_l)
+        product = game['name']
+        merchantName = game["merchantName"][0]
+        productId = None
+        totalQty = game['totalQty']
 
-    """Проходимся по отсортированному списку и формируем строку с данными каждого продавца по этой игре"""
-    x = 0
-    offer_list = ''
-    for s in s_l[:20]:
-        if s[1] == 'Sar Sar':
-            offer_list = offer_list + f'<b><u>{x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. |</u></b> \n'
-        else:
-            offer_list = offer_list + f'{x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. | \n'.replace('.', '.﻿')
-        x += 1
+        """Создаем вложенный список формата [цена, имя продаца, остатки этого продавца по этой игре]
+            затем сортируем список по возрастанию цены"""
+        s_l = []
+        ost = 0
+        # ex = 0
+        for offer in game['offers']:
+            s_l.append([offer['price'], offer['merchantName'], offer['qty']])
+            if offer['merchantName'] == 'Sar Sar':
+                # ex = offer['price']
+                ost = offer['qty']
+                productId = offer['offerId']
+        s_l.sort()
+        # print(s_l)
 
-    # if merchantName != "Sar Sar":
-    price_edit_btn = InlineKeyboardButton('Изменить цену',
-                                          url=f'https://www.kinguin.net/app/merchant/843534/offer/{productId}')
-    skip_btn = InlineKeyboardButton('Пропустить', callback_data=f'skip_{prod_list.index(checking_prod)}')
-    inline_kb_spec = InlineKeyboardMarkup(row_width=2)
-    inline_kb_spec.row(price_edit_btn, skip_btn)
+        """Проходимся по отсортированному списку и формируем строку с данными каждого продавца по этой игре"""
+        x = 0
+        offer_list = ''
+        for s in s_l[:20]:
+            if s[1] == 'Sar Sar':
+                offer_list = offer_list + f'<b><u>{x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. |</u></b> \n'
+            else:
+                offer_list = offer_list + f'{x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. | \n'.replace('.', '.﻿')
+            x += 1
 
-    async def alert():
-        for c_id in chat_id:
-            await bot.send_message(c_id, text=
-            f'''⚠️ИЗМЕНИЛАСЬ ЦЕНА ⚠ \n 
+        # if merchantName != "Sar Sar":
+        price_edit_btn = InlineKeyboardButton('Изменить цену',
+                                              url=f'https://www.kinguin.net/app/merchant/843534/offer/{productId}')
+        # skip_btn = InlineKeyboardButton('Пропустить', callback_data=f'skip_{prod_list.index(checking_prod)}')
+        inline_kb_spec = InlineKeyboardMarkup(row_width=1)
+        inline_kb_spec.row(price_edit_btn)
+
+        async def alert():
+            for c_id in chat_id:
+                await bot.send_message(c_id, text=
+                f'''⚠️ИЗМЕНИЛАСЬ ЦЕНА ⚠ \n 
 <b>{product}</b> \n
 ↓ | Цена | Продавец | Остаток | \n
 {offer_list}   
 Всего ключей в продаже:  <b>{totalQty} шт.</b> \n''',
-                                   reply_markup=inline_kb_spec, parse_mode='HTML')
+                                       reply_markup=inline_kb_spec, parse_mode='HTML')
 
-    await alert()
-    checking_prod['last_price'] = game['price']
-    checking_prod['qty'] = ost
-    with open('products.json', 'w') as f:
-        json.dump(prod_list, f, indent=2)
+        await alert()
+
+        if not prod_id:
+            checking_prod['last_price'] = game['price']
+            checking_prod['qty'] = ost
+            with open('products.json', 'w') as f:
+                json.dump(prod_list, f, indent=2)
 
 
 def add_product(product_id):

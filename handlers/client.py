@@ -4,7 +4,8 @@ from aiogram import types, Dispatcher
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from create_bot import dp, bot, chat_id
-from handlers.other import get_prod_list, check_prod, add_product, get_prod_name, get_all_products, get_prod_qty
+from handlers.other import get_prod_list, check_prod, add_product, get_prod_name, get_all_products, get_prod_qty, \
+    get_prod
 from config import TIMER
 
 sec_timer = TIMER
@@ -28,7 +29,42 @@ async def command_start(message: types.Message):
 @dp.message_handler(commands='check')
 async def check_now(message: types.Message):
     if message.from_user.id in chat_id:
-        await check_price(check_now=1)
+        if not message.get_args() == '':
+            if len(message.get_args().split(' ')) > 1:
+                await bot.send_message(message.from_user.id,
+                                       f'❌ Введите корректный id!', parse_mode='HTML')
+            else:
+                product_id = message.get_args().split(' ')[0]
+                if product_id:
+                    prod = get_prod(product_id)
+                    if prod:
+                        await check_prod(check_now=1, prod_id=product_id)
+                    else:
+                        await bot.send_message(message.from_user.id,
+                                               f'❌ По id-<b>{product_id}</b> не найдено ни одного продукта!',
+                                               parse_mode='HTML')
+        else:
+            prod_list = get_prod_list()
+            products = ''
+            keys = []
+            for prod in prod_list:
+                indx = prod_list.index(prod)
+                prod_name = prod['name']
+                products = products + f'{indx + 1} | {prod_name} \n'
+                btn = InlineKeyboardButton(f'{indx + 1}', callback_data=f'check_{indx + 1}')
+                keys.append(btn)
+
+            numb_prod = InlineKeyboardMarkup(row_width=5).row(*keys)
+            numb_prod.add(InlineKeyboardButton(f'Отмена', callback_data='check_cancel'))
+            await bot.send_message(message.from_user.id,
+                                   f'📜 <b> Список продуктов для проверки:</b>\n \n'
+                                   f'{products}', parse_mode='HTML', reply_markup=numb_prod)
+
+
+@dp.message_handler(commands='check_all')
+async def check_now(message: types.Message):
+    if message.from_user.id in chat_id:
+        await check_prod(check_now=1)
 
 
 @dp.message_handler(commands='add')
@@ -60,14 +96,10 @@ async def delete_prod(message: types.Message):
         prod_list = get_prod_list()
         products = ''
         keys = []
-        numb_prod = InlineKeyboardMarkup(row_width=5)
         for prod in prod_list:
             indx = prod_list.index(prod)
             prod_name = prod['name']
-            # last_price = prod['last_price']
-            # qty = get_prod_qty(prod['id'])
-            products = products + f'{indx + 1} | {prod_name} \n' \
-                # ' | {last_price} | {qty} шт. | \n'.replace('.', '.﻿')
+            products = products + f'{indx + 1} | {prod_name} \n'
 
             btn = InlineKeyboardButton(f'{indx + 1}', callback_data=f'delete_{indx + 1}')
             keys.append(btn)
@@ -150,13 +182,23 @@ async def process_callback(callback_query: types.CallbackQuery):
                                        f'✅ Продукт\n<b>{prod_name}\nID <code>{prod_id}</code></b>\nУдален из списка!',
                                        parse_mode='HTML')
 
+    elif callback_query.data.startswith('check_'):
+        if callback_query.data.split('_')[1] == 'cancel':
+            await callback_query.message.delete()
+        else:
+            prod_indx = int(callback_query.data.split('_')[1])
+            prod_list = get_prod_list()
+            prod_on_check = prod_list.pop(prod_indx - 1)
+            prod_id = prod_on_check['id']
+            await callback_query.message.delete()
+            await check_prod(check_now=1, prod_id=prod_id)
 
-async def check_price(check_now=0):
-    prod_list = get_prod_list()
-    all_games_list = get_all_products(prod_list)
-    for game in all_games_list:
-        checking_prod = prod_list[all_games_list.index(game)]
-        await check_prod(prod_list, game, checking_prod, check_now)
+# async def check_price(check_now=0):
+#     prod_list = get_prod_list()
+#     all_games_list = get_all_products(prod_list)
+#     for game in all_games_list:
+#         checking_prod = prod_list[all_games_list.index(game)]
+#         await check_prod(check_now)
 
 
 async def task():
@@ -168,5 +210,5 @@ async def task():
             await asyncio.sleep(sec_timer)
             continue
         else:
-            await check_price()
+            await check_prod()
             await asyncio.sleep(sec_timer)
