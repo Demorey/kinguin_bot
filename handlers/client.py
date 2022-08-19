@@ -54,7 +54,7 @@ async def check_now(message: types.Message):
                 btn = InlineKeyboardButton(f'{indx + 1}', callback_data=f'check_{indx + 1}')
                 keys.append(btn)
 
-            numb_prod = InlineKeyboardMarkup(row_width=5).row(*keys)
+            numb_prod = InlineKeyboardMarkup(row_width=5).add(*keys)
             numb_prod.add(InlineKeyboardButton(f'Отмена', callback_data='check_cancel'))
             await bot.send_message(message.from_user.id,
                                    f'📜 <b> Список продуктов для проверки:</b>\n \n'
@@ -104,7 +104,7 @@ async def delete_prod(message: types.Message):
             btn = InlineKeyboardButton(f'{indx + 1}', callback_data=f'delete_{indx + 1}')
             keys.append(btn)
 
-        numb_prod = InlineKeyboardMarkup(row_width=5).row(*keys)
+        numb_prod = InlineKeyboardMarkup(row_width=5).add(*keys)
         numb_prod.add(InlineKeyboardButton(f'Отмена', callback_data='delete_cancel'))
         await bot.send_message(message.from_user.id,
                                f'❌ <b>Список продуктов для удаления:</b>\n \n'
@@ -192,6 +192,7 @@ async def process_callback(callback_query: types.CallbackQuery):
             prod_id = prod_on_check['id']
             await callback_query.message.delete()
             await check_prod(check_now=1, prod_id=prod_id)
+
 
 # async def check_price(check_now=0):
 #     prod_list = get_prod_list()

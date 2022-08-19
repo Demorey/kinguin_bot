@@ -144,8 +144,18 @@ async def check_prod(check_now=0, prod_id=None):
         inline_kb_spec.row(price_edit_btn)
 
         async def alert():
-            for c_id in chat_id:
-                await bot.send_message(c_id, text=
+            if prod_id:
+                for c_id in chat_id:
+                    await bot.send_message(c_id, text=
+                f'''⚠️ПРОВЕРКА ПРОДУКТА ⚠ \n 
+<b>{product}</b> \n
+↓ | Цена | Продавец | Остаток | \n
+{offer_list}   
+Всего ключей в продаже:  <b>{totalQty} шт.</b> \n''',
+                                       reply_markup=inline_kb_spec, parse_mode='HTML')
+            else:
+                for c_id in chat_id:
+                    await bot.send_message(c_id, text=
                 f'''⚠️ИЗМЕНИЛАСЬ ЦЕНА ⚠ \n 
 <b>{product}</b> \n
 ↓ | Цена | Продавец | Остаток | \n
