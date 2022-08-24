@@ -31,8 +31,7 @@ async def check_now(message: types.Message):
     if message.from_user.id in chat_id:
         if not message.get_args() == '':
             if len(message.get_args().split(' ')) > 1:
-                await bot.send_message(message.from_user.id,
-                                       f'❌ Введите корректный id!', parse_mode='HTML')
+                await bot.send_message(message.from_user.id, '❌ Введите корректный id')
             else:
                 product_id = message.get_args().split(' ')[0]
                 if product_id:
@@ -47,11 +46,10 @@ async def check_now(message: types.Message):
             prod_list = get_prod_list()
             products = ''
             keys = []
-            for prod in prod_list:
-                indx = prod_list.index(prod)
+            for index, prod in enumerate(prod_list, start=1):
                 prod_name = prod['name']
-                products = products + f'{indx + 1} | {prod_name} \n'
-                btn = InlineKeyboardButton(f'{indx + 1}', callback_data=f'check_{indx + 1}')
+                products = products + f'{index} | {prod_name} \n'
+                btn = InlineKeyboardButton(f'{index}', callback_data=f'check_{index}')
                 keys.append(btn)
 
             numb_prod = InlineKeyboardMarkup(row_width=5).add(*keys)
