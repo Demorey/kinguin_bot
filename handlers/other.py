@@ -94,21 +94,19 @@ async def check_prod(check_now=0, prod_id=None):
     else:
         all_games_list = get_all_products(prod_id=prod_id)
 
-    for game in all_games_list:
+    for index, game in enumerate(all_games_list):
         if prod_list:
-            checking_prod = prod_list[all_games_list.index(game)]
+            checking_prod = prod_list[index]
 
             """Проверяем была ли начала проверка по команде check"""
             if not check_now:
 
                 """Проверяем что самая низкая цена не изменилась с прошлой проверки, иначе вывести уведомление"""
-                # print(game['name'], game['price'], checking_prod['last_price'])
                 # if game['price'] == checking_prod['last_price'] and checking_prod['skip'] == 1:
                 if game['price'] == checking_prod['last_price']:
                     return
 
         product = game['name']
-        merchantName = game["merchantName"][0]
         productId = None
         totalQty = game['totalQty']
 
@@ -116,11 +114,9 @@ async def check_prod(check_now=0, prod_id=None):
             затем сортируем список по возрастанию цены"""
         s_l = []
         ost = 0
-        # ex = 0
         for offer in game['offers']:
             s_l.append([offer['price'], offer['merchantName'], offer['qty']])
             if offer['merchantName'] == 'Sar Sar':
-                # ex = offer['price']
                 ost = offer['qty']
                 productId = offer['offerId']
         s_l.sort()
@@ -186,7 +182,7 @@ def add_product(product_id):
         "id": f"{product_id}",
         "last_price": 0,
         "qty": prod_qty,
-        "skip": 0}
+    }
 
     prod_list.append(new_prod)
 

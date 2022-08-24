@@ -70,7 +70,11 @@ async def check_now(message: types.Message):
 @dp.message_handler(commands='add')
 async def add_new_prod(message: types.Message):
     if message.from_user.id in chat_id:
-        product_id = message.text.split(' ')[1]
+        try:
+            product_id = message.text.split(' ')[1]
+        except IndexError:
+            await bot.send_message(message.from_user.id, '❌ Введите корректный id')
+            return
         prod_name = get_prod_name(product_id)
         if prod_name is not None:
             prod_list = get_prod_list()
@@ -96,12 +100,11 @@ async def delete_prod(message: types.Message):
         prod_list = get_prod_list()
         products = ''
         keys = []
-        for prod in prod_list:
-            indx = prod_list.index(prod)
+        for index, prod in enumerate(prod_list, start=1):
             prod_name = prod['name']
-            products = products + f'{indx + 1} | {prod_name} \n'
+            products = products + f'{index} | {prod_name} \n'
 
-            btn = InlineKeyboardButton(f'{indx + 1}', callback_data=f'delete_{indx + 1}')
+            btn = InlineKeyboardButton(f'{index}', callback_data=f'delete_{index}')
             keys.append(btn)
 
         numb_prod = InlineKeyboardMarkup(row_width=5).add(*keys)
