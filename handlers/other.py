@@ -127,9 +127,9 @@ async def check_prod(check_now=0, prod_id=None):
         offer_list = ''
         for s in s_l[:20]:
             if s[1] == 'Sar Sar':
-                offer_list = offer_list + f'<b><u>{x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. |</u></b> \n'
+                offer_list = offer_list + f'<b><u>{x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. |</u></b>\n'
             else:
-                offer_list = offer_list + f'{x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. | \n'.replace('.', '.﻿')
+                offer_list = offer_list + f'{x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. |\n'.replace('.', '.﻿')
             x += 1
 
         # if merchantName != "Sar Sar":
@@ -168,7 +168,7 @@ async def check_prod(check_now=0, prod_id=None):
                 json.dump(prod_list, f, indent=2)
 
 
-def add_product(product_id):
+async def add_product(product_id):
     prod_list = get_prod_list()
     for prod in prod_list:
         if prod['name'] == get_prod_name(product_id):
