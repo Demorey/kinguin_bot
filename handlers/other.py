@@ -1,5 +1,7 @@
+import datetime
 import requests
 import json
+import logging
 from create_bot import bot, chat_id
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from config import API_TOKEN
@@ -10,6 +12,9 @@ from config import API_TOKEN
 def get_prod_list():
     with open('products.json', 'r') as f:
         prod_list = json.load(f)
+    print(datetime.datetime.now(), prod_list)
+    logging.basicConfig(filename="loger.log", level=logging.DEBUG,
+                        format="%(asctime)s - %(levelname)s - %(funcName)s: %(lineno)d - %(message)s")
     return prod_list
 
 
@@ -25,9 +30,13 @@ def get_prod(product_id):
     if response.status_code in (404, 400):
         return None
     else:
-        prod = json.loads(response.content)
-        return prod
-
+        try:
+            prod = json.loads(response.content)
+            return prod
+        except:
+            logging.basicConfig(filename="loger.log", level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(funcName)s: %(lineno)d - %(message)s")
+            logging.debug("Ошибка при получении ответа по продукту - "+product_id)
+            print('Error check!')
 
 """Получаем название продукта по его id"""
 
@@ -114,11 +123,16 @@ async def check_prod(check_now=0, prod_id=None):
             затем сортируем список по возрастанию цены"""
         s_l = []
         ost = 0
+        with open('logs.json', 'w') as f:
+            json.dump(game, f, indent=2)
         for offer in game['offers']:
-            s_l.append([offer['price'], offer['merchantName'], offer['qty']])
-            if offer['merchantName'] == 'Sar Sar':
-                ost = offer['qty']
-                productId = offer['offerId']
+            try:
+                s_l.append([offer['price'], offer['merchantName'], offer['qty']])
+                if offer['merchantName'] == 'Sar Sar':
+                    ost = offer['qty']
+                    productId = offer['offerId']
+            except:
+                pass
         s_l.sort()
         # print(s_l)
 
@@ -140,7 +154,7 @@ async def check_prod(check_now=0, prod_id=None):
         inline_kb_spec.row(price_edit_btn)
 
         async def alert():
-            if prod_id:
+            if prod_id or check_now:
                 for c_id in chat_id:
                     await bot.send_message(c_id, text=
                 f'''⚠️ПРОВЕРКА ПРОДУКТА ⚠ \n 

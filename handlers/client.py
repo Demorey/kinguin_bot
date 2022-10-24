@@ -74,6 +74,7 @@ async def check_now(message: types.Message):
 @dp.message_handler(state=states_name.check)
 async def check_choosed(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
+        print(data['prods_to_check'])
         data['prods_to_check'] = message.text.split()
         prod_list = get_prod_list()
         for prod_indx in data['prods_to_check']:
@@ -93,7 +94,14 @@ async def check_choosed(message: types.Message, state: FSMContext):
 @dp.message_handler(commands='check_all')
 async def check_now(message: types.Message):
     if message.from_user.id in chat_id:
-        await check_prod(check_now=1)
+        confirm_btn = InlineKeyboardButton('✅', callback_data='check_all_confirm')
+        cancel_btn = InlineKeyboardButton('❌', callback_data='check_all_cancel')
+        choose = InlineKeyboardMarkup(row_width=2).row(confirm_btn, cancel_btn)
+        await bot.send_message(message.from_user.id,
+                               f'Вы уверены что хотите сделать проверку всех продуктов?',
+                               parse_mode='HTML',
+                               reply_markup=choose)
+
 
 
 @dp.message_handler(commands='add')
@@ -216,7 +224,6 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
         prod_list[index]['skip'] = 1
         with open('products.json', 'w') as f:
             json.dump(prod_list, f, indent=2)
-        await callback_query.message.delete()
 
     elif callback_query.data.startswith('add_'):
         index = callback_query.data.split('_')[1]
@@ -230,12 +237,10 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
         else:
             await callback_query.message.delete()
             await bot.send_message(callback_query.from_user.id, '❌ Добавление отменено!')
-        await callback_query.message.delete()
 
     elif callback_query.data.startswith('delete_'):
         if callback_query.data.split('_')[1] == 'cancel':
             await state.finish()
-            await callback_query.message.delete()
         # else:
         #     prod_indx = int(callback_query.data.split('_')[1])
         #     prod_list = get_prod_list()
@@ -251,17 +256,21 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
         #                                parse_mode='HTML')
 
     elif callback_query.data.startswith('check_'):
-        if callback_query.data.split('_')[1] == 'cancel':
-            await state.finish()
-            await callback_query.message.delete()
-    #     else:
-    #         prod_indx = int(callback_query.data.split('_')[1])
-    #         prod_list = get_prod_list()
-    #         prod_on_check = prod_list.pop(prod_indx - 1)
-    #         prod_id = prod_on_check['id']
-    #         await callback_query.message.delete()
-    #         await check_prod(check_now=1, prod_id=prod_id)
+        if callback_query.data.startswith('check_all_'):
+            if callback_query.data.split('check_all_')[1] == 'confirm':
+                await check_prod(check_now=1)
+        else:
+            if callback_query.data.split('_')[1] == 'cancel':
+                await state.finish()
+        #     else:
+        #         prod_indx = int(callback_query.data.split('_')[1])
+        #         prod_list = get_prod_list()
+        #         prod_on_check = prod_list.pop(prod_indx - 1)
+        #         prod_id = prod_on_check['id']
+        #         await callback_query.message.delete()
+        #         await check_prod(check_now=1, prod_id=prod_id)
 
+    await callback_query.message.delete()
 
 # async def check_price(check_now=0):
 #     prod_list = get_prod_list()
