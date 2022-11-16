@@ -74,7 +74,6 @@ async def check_now(message: types.Message):
 @dp.message_handler(state=states_name.check)
 async def check_choosed(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        print(data['prods_to_check'])
         data['prods_to_check'] = message.text.split()
         prod_list = get_prod_list()
         for prod_indx in data['prods_to_check']:

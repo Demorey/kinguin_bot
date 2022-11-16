@@ -1,4 +1,5 @@
 import datetime
+from time import sleep
 import requests
 import json
 import logging
@@ -12,7 +13,7 @@ from config import API_TOKEN
 def get_prod_list():
     with open('products.json', 'r') as f:
         prod_list = json.load(f)
-    print(datetime.datetime.now(), prod_list)
+    # print(datetime.datetime.now(), prod_list)
     logging.basicConfig(filename="loger.log", level=logging.DEBUG,
                         format="%(asctime)s - %(levelname)s - %(funcName)s: %(lineno)d - %(message)s")
     return prod_list
@@ -36,7 +37,9 @@ def get_prod(product_id):
         except:
             logging.basicConfig(filename="loger.log", level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(funcName)s: %(lineno)d - %(message)s")
             logging.debug("Ошибка при получении ответа по продукту - "+product_id)
-            print('Error check!')
+            print('get_prod', response.content)
+            print(datetime.datetime.now(), '- Error, check logs!')
+            sleep(600)
 
 """Получаем название продукта по его id"""
 
@@ -50,9 +53,16 @@ def get_prod_name(product_id):
     if response.status_code in (404, 400):
         return None
     else:
-        prod = json.loads(response.content)
-        return prod['name']
-
+        try:
+            prod = json.loads(response.content)
+            return prod['name']
+        except:
+            logging.basicConfig(filename="loger.log", level=logging.DEBUG,
+                                format="%(asctime)s - %(levelname)s - %(funcName)s: %(lineno)d - %(message)s")
+            logging.debug("Ошибка при получении ответа по продукту - " + product_id)
+            print('get_prod_name', response.content)
+            print(datetime.datetime.now(), '- Error, check logs!')
+            sleep(600)
 
 """Получаем количество остатков продукта"""
 
@@ -66,8 +76,16 @@ def get_prod_qty(product_id):
     if response.status_code in (404, 400):
         return None
     else:
-        prod = json.loads(response.content)
-        return prod['qty']
+        try:
+            prod = json.loads(response.content)
+            return prod['qty']
+        except:
+            logging.basicConfig(filename="loger.log", level=logging.DEBUG,
+                                format="%(asctime)s - %(levelname)s - %(funcName)s: %(lineno)d - %(message)s")
+            logging.debug("Ошибка при получении ответа по продукту - " + product_id)
+            print('get_prod_qty', response.content)
+            print(datetime.datetime.now(), '- Error, check logs!')
+            sleep(600)
 
 
 """Парсим в список данные по каждому продукту"""
@@ -111,7 +129,6 @@ async def check_prod(check_now=0, prod_id=None):
             if not check_now:
 
                 """Проверяем что самая низкая цена не изменилась с прошлой проверки, иначе вывести уведомление"""
-                # if game['price'] == checking_prod['last_price'] and checking_prod['skip'] == 1:
                 if game['price'] == checking_prod['last_price']:
                     return
 
@@ -123,8 +140,6 @@ async def check_prod(check_now=0, prod_id=None):
             затем сортируем список по возрастанию цены"""
         s_l = []
         ost = 0
-        with open('logs.json', 'w') as f:
-            json.dump(game, f, indent=2)
         for offer in game['offers']:
             try:
                 s_l.append([offer['price'], offer['merchantName'], offer['qty']])
