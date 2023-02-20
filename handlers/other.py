@@ -3,26 +3,32 @@ from time import sleep
 import requests
 import json
 import logging
-from create_bot import bot, chat_id
+from logging.handlers import RotatingFileHandler
+from aiogram_bot import bot, chat_id_list
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from config import API_TOKEN
+
+logging.basicConfig(level=logging.DEBUG, encoding='utf-8',
+                    handlers=[RotatingFileHandler('logs/debug_loger.log', maxBytes=5000000, backupCount=1)],
+                    format="%(asctime)s - [%(levelname)s] - %(funcName)s: %(lineno)d - %(message)s")
+
+prod_list = None
 
 """Выгружаем в словарь все продукты которые нужно проверять"""
 
 
-def get_prod_list():
-    with open('products.json', 'r') as f:
+def get_prod_list() -> dict:
+    with open('data/products.json', 'r') as f:
         prod_list = json.load(f)
     # print(datetime.datetime.now(), prod_list)
-    logging.basicConfig(filename="loger.log", level=logging.DEBUG,
-                        format="%(asctime)s - %(levelname)s - %(funcName)s: %(lineno)d - %(message)s")
+    logging.debug("Произведена загрузка данных из файла с продуктами")
     return prod_list
 
 
 """Получаем данные по продукту по его id"""
 
 
-def get_prod(product_id):
+def get_prod(product_id) -> dict or None:
     headers = {
         'X-Api-Key': API_TOKEN
     }
@@ -35,16 +41,16 @@ def get_prod(product_id):
             prod = json.loads(response.content)
             return prod
         except:
-            logging.basicConfig(filename="loger.log", level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(funcName)s: %(lineno)d - %(message)s")
-            logging.debug("Ошибка при получении ответа по продукту - "+product_id)
+            logging.debug("Ошибка при получении ответа по продукту - " + product_id)
             print('get_prod', response.content)
             print(datetime.datetime.now(), '- Error, check logs!')
             sleep(600)
 
+
 """Получаем название продукта по его id"""
 
 
-def get_prod_name(product_id):
+def get_prod_name(product_id) -> str or None:
     headers = {
         'X-Api-Key': API_TOKEN
     }
@@ -57,17 +63,16 @@ def get_prod_name(product_id):
             prod = json.loads(response.content)
             return prod['name']
         except:
-            logging.basicConfig(filename="loger.log", level=logging.DEBUG,
-                                format="%(asctime)s - %(levelname)s - %(funcName)s: %(lineno)d - %(message)s")
             logging.debug("Ошибка при получении ответа по продукту - " + product_id)
             print('get_prod_name', response.content)
             print(datetime.datetime.now(), '- Error, check logs!')
             sleep(600)
 
+
 """Получаем количество остатков продукта"""
 
 
-def get_prod_qty(product_id):
+def get_prod_qty(product_id) -> int or None:
     headers = {
         'X-Api-Key': API_TOKEN
     }
@@ -80,8 +85,6 @@ def get_prod_qty(product_id):
             prod = json.loads(response.content)
             return prod['qty']
         except:
-            logging.basicConfig(filename="loger.log", level=logging.DEBUG,
-                                format="%(asctime)s - %(levelname)s - %(funcName)s: %(lineno)d - %(message)s")
             logging.debug("Ошибка при получении ответа по продукту - " + product_id)
             print('get_prod_qty', response.content)
             print(datetime.datetime.now(), '- Error, check logs!')
@@ -91,61 +94,58 @@ def get_prod_qty(product_id):
 """Парсим в список данные по каждому продукту"""
 
 
-def get_all_products(prod_list=None, prod_id=None):
+def get_all_products(prod_list=None, prod_id=None) -> list:
     all_games_list = []
     if prod_id:
         prod = get_prod(prod_id)
         all_games_list.append(prod)
-    else:
+    elif prod_list:
         for product in prod_list:
-            product_id = product['id']
-            prod = get_prod(product_id)
+            prod = get_prod(product['id'])
             all_games_list.append(prod)
+            sleep(2)
 
-            # with open('test.json', 'w') as f:
-            #     json.dump(all_games_list, f, indent=2)
+        # with open('test.json', 'w') as f:
+        #     json.dump(all_games_list, f, indent=2)
 
     return all_games_list
 
 
 """Сопоставляем данные из 2х списков, где
-        prod_list - это список из данных полученные из файла products.json в корневой директории
+        prod_list - это список из данных полученные из файла data/products.json в корневой директории
         all_games_list - это список с данными по каждой игре полученными от сервера"""
 
 
-async def check_prod(check_now=0, prod_id=None):
-    prod_list = None
-    if not prod_id:
+async def check_prod(check_now=None, prod_id=None):
+    global prod_list
+    if prod_id is None:
         prod_list = get_prod_list()
         all_games_list = get_all_products(prod_list=prod_list)
     else:
         all_games_list = get_all_products(prod_id=prod_id)
 
     for index, game in enumerate(all_games_list):
-        if prod_list:
+
+        """Проверяем была ли начала проверка по команде check"""
+        if prod_id is None and check_now is None:
             checking_prod = prod_list[index]
 
-            """Проверяем была ли начала проверка по команде check"""
-            if not check_now:
+            """Проверяем что самая низкая цена не изменилась с прошлой проверки, иначе вывести уведомление"""
+            if game['price'] == checking_prod['last_price']:
+                continue
 
-                """Проверяем что самая низкая цена не изменилась с прошлой проверки, иначе вывести уведомление"""
-                if game['price'] == checking_prod['last_price']:
-                    return
-
-        product = game['name']
         productId = None
-        totalQty = game['totalQty']
 
-        """Создаем вложенный список формата [цена, имя продаца, остатки этого продавца по этой игре]
+        """Создаем вложенный список формата [[цена, имя продаца, остатки этого продавца по этой игре], ...]
             затем сортируем список по возрастанию цены"""
         s_l = []
-        ost = 0
+        ostatok = 0
         for offer in game['offers']:
             try:
                 s_l.append([offer['price'], offer['merchantName'], offer['qty']])
                 if offer['merchantName'] == 'Sar Sar':
-                    ost = offer['qty']
                     productId = offer['offerId']
+                    ostatok = offer['qty']
             except:
                 pass
         s_l.sort()
@@ -170,30 +170,30 @@ async def check_prod(check_now=0, prod_id=None):
 
         async def alert():
             if prod_id or check_now:
-                for c_id in chat_id:
+                for c_id in chat_id_list:
                     await bot.send_message(c_id, text=
-                f'''⚠️ПРОВЕРКА ПРОДУКТА ⚠ \n 
-<b>{product}</b> \n
+                    f'''⚠️ПРОВЕРКА ПРОДУКТА ⚠ \n 
+<b>{game['name']}</b> \n
 ↓ | Цена | Продавец | Остаток | \n
 {offer_list}   
-Всего ключей в продаже:  <b>{totalQty} шт.</b> \n''',
-                                       reply_markup=inline_kb_spec, parse_mode='HTML')
+Всего ключей в продаже:  <b>{game['totalQty']} шт.</b> \n''',
+                                           reply_markup=inline_kb_spec, parse_mode='HTML')
             else:
-                for c_id in chat_id:
+                for c_id in chat_id_list:
                     await bot.send_message(c_id, text=
-                f'''⚠️ИЗМЕНИЛАСЬ ЦЕНА ⚠ \n 
-<b>{product}</b> \n
+                    f'''⚠️ИЗМЕНИЛАСЬ ЦЕНА ⚠ \n 
+<b>{game['name']}</b> \n
 ↓ | Цена | Продавец | Остаток | \n
 {offer_list}   
-Всего ключей в продаже:  <b>{totalQty} шт.</b> \n''',
-                                       reply_markup=inline_kb_spec, parse_mode='HTML')
+Всего ключей в продаже:  <b>{game['totalQty']} шт.</b> \n''',
+                                           reply_markup=inline_kb_spec, parse_mode='HTML')
 
         await alert()
 
-        if not prod_id:
+        if prod_id is None:
             checking_prod['last_price'] = game['price']
-            checking_prod['qty'] = ost
-            with open('products.json', 'w') as f:
+            checking_prod['qty'] = ostatok
+            with open('data/products.json', 'w') as f:
                 json.dump(prod_list, f, indent=2)
 
 
@@ -215,5 +215,5 @@ async def add_product(product_id):
 
     prod_list.append(new_prod)
 
-    with open('products.json', 'w') as f:
+    with open('data/products.json', 'w') as f:
         json.dump(prod_list, f, indent=2)

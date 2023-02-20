@@ -1,5 +1,8 @@
-/config.py
-/test.json
-/products.json
+.idea
+.git
+/__pycache__
+config.py
+data/products.json
 /venv/
-/reformat.py
+.env
+/test.json

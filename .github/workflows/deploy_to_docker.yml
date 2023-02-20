@@ -1,0 +1,53 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: build docker image
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          TIMER: ${{ secrets.TIMER }}
+        run: |
+          printf "BOT_TOKEN=\"$BOT_TOKEN\"\nAPI_TOKEN=\"$API_TOKEN\"\nCHAT_ID=\"$CHAT_ID\"\nTIMER=\"$TIMER\"" > .env
+          docker build --no-cache -t demorey/kinguin_bot:v1 .
+          docker save -o kinguin_bot.tar demorey/kinguin_bot:v1
+      - name: scp docker image to DO
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: 22
+          source: kinguin_bot.tar
+          target: ./kinguin_bot/build
+
+      - name: executing remote ssh commands using password
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: 22
+          script: |
+                    cd kinguin_bot
+                    docker stop kinguin_bot
+                    docker rm kinguin_bot
+                    docker rmi demorey/kinguin_bot:v1
+                    docker load -i ./build/kinguin_bot.tar
+                    docker run -dit \
+                    --name kinguin_bot \
+                    -P \
+                    -v ~/kinguin_bot/logs:/kinguin_bot/logs \
+                    -v ~/kinguin_bot/data:/kinguin_bot/data \
+                    demorey/kinguin_bot:v1
+                    rm -rf build/

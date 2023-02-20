@@ -1,28 +1,17 @@
 import asyncio
 import json
-from aiogram import types, Dispatcher
+from aiogram import types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
-from create_bot import dp, bot, chat_id
+from aiogram_bot import dp, bot, chat_id_list, TIMER
 from handlers.other import get_prod_list, check_prod, add_product, get_prod_name, get_all_products, get_prod_qty, \
     get_prod
-from config import TIMER
 
 sec_timer = TIMER
-start_iter = 1
 
-
-# def register_handlers_client(dp: Dispatcher):
-#     dp.register_message_handler(command_start, commands=['start'])
-#     dp.register_message_handler(check_now, commands=['check'])
-#     dp.register_message_handler(edit_timer, commands=['timer'])
-#     dp.register_message_handler(check_time, commands=['time'])
-#     dp.register_message_handler(help, commands=['help'])
-#     dp.register_message_handler(add_new_prod, commands=['add'])
-#     dp.register_message_handler(delete_prod, commands=['delete'])
 
 class states_name(StatesGroup):
     delete = State()
@@ -36,7 +25,7 @@ async def command_start(message: types.Message):
 
 @dp.message_handler(commands='check')
 async def check_now(message: types.Message):
-    if message.from_user.id in chat_id:
+    if message.from_user.id in chat_id_list:
         if not message.get_args() == '':
             if len(message.get_args().split(' ')) > 1:
                 await bot.send_message(message.from_user.id, '❌ Введите корректный id')
@@ -70,7 +59,6 @@ async def check_now(message: types.Message):
                                    parse_mode='HTML', reply_markup=numb_prod)
 
 
-
 @dp.message_handler(state=states_name.check)
 async def check_choosed(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
@@ -87,12 +75,9 @@ async def check_choosed(message: types.Message, state: FSMContext):
         await state.finish()
 
 
-
-
-
 @dp.message_handler(commands='check_all')
 async def check_now(message: types.Message):
-    if message.from_user.id in chat_id:
+    if message.from_user.id in chat_id_list:
         confirm_btn = InlineKeyboardButton('✅', callback_data='check_all_confirm')
         cancel_btn = InlineKeyboardButton('❌', callback_data='check_all_cancel')
         choose = InlineKeyboardMarkup(row_width=2).row(confirm_btn, cancel_btn)
@@ -102,10 +87,9 @@ async def check_now(message: types.Message):
                                reply_markup=choose)
 
 
-
 @dp.message_handler(commands='add')
 async def add_new_prod(message: types.Message):
-    if message.from_user.id in chat_id:
+    if message.from_user.id in chat_id_list:
         product_id = message.text.split(' ')
         if len(product_id) < 2:
             await bot.send_message(message.from_user.id, '❌ Введите корректный id')
@@ -137,7 +121,7 @@ async def add_new_prod(message: types.Message):
 
 @dp.message_handler(commands='delete', state='*')
 async def delete_prod(message: types.Message):
-    if message.from_user.id in chat_id:
+    if message.from_user.id in chat_id_list:
         await states_name.delete.set()
         prod_list = get_prod_list()
         products = ''
@@ -160,7 +144,7 @@ async def delete_prod(message: types.Message):
 
 @dp.message_handler(commands='help')
 async def help(message: types.Message):
-    if message.from_user.id in chat_id:
+    if message.from_user.id in chat_id_list:
         await bot.send_message(message.from_user.id,
                                f'''<b>Команды для управления:</b>\n
 /start - узнать ваш user_id\n
@@ -175,16 +159,16 @@ async def help(message: types.Message):
 
 @dp.message_handler(commands='time')
 async def check_time(message: types.Message):
-    if message.from_user.id in chat_id:
+    if message.from_user.id in chat_id_list:
         await bot.send_message(message.from_user.id, f'Текущий таймер: {sec_timer} секунд')
 
 
 @dp.message_handler(commands='timer')
 async def edit_timer(message: types.Message):
-    if message.from_user.id in chat_id and message.get_args().isdigit():
+    if message.from_user.id in chat_id_list and message.get_args().isdigit():
         global sec_timer
         sec_timer = int(message.get_args())
-        for chat in chat_id:
+        for chat in chat_id_list:
             await bot.send_message(chat,
                                    f'Таймер до повторной проверки обновлен: {message.get_args()} секунд')
 
@@ -207,9 +191,9 @@ async def delete_choosed(message: types.Message, state: FSMContext):
             x += 1
 
         if removed:
-            with open('products.json', 'w') as f:
+            with open('data/products.json', 'w') as f:
                 json.dump(prod_list, f, indent=2)
-            for chat in chat_id:
+            for chat in chat_id_list:
                 await bot.send_message(chat, removed, parse_mode='HTML')
 
         await state.finish()
@@ -221,7 +205,7 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
         prod_list = get_prod_list()
         index = int(callback_query.data.split('skip_')[1])
         prod_list[index]['skip'] = 1
-        with open('products.json', 'w') as f:
+        with open('data/products.json', 'w') as f:
             json.dump(prod_list, f, indent=2)
 
     elif callback_query.data.startswith('add_'):
@@ -229,7 +213,7 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
         if index == 'confirm':
             prod_id = callback_query.data.split('_')[2]
             await add_product(prod_id)
-            for chat in chat_id:
+            for chat in chat_id_list:
                 await bot.send_message(chat,
                                        f'✅ Продукт\n<b>{get_prod_name(prod_id)}</b>\nУспешно добавлен в список для проверки!',
                                        parse_mode='HTML')
@@ -246,9 +230,9 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
         #     prod_on_remove = prod_list.pop(prod_indx - 1)
         #     prod_name = prod_on_remove['name']
         #     prod_id = prod_on_remove['id']
-        #     with open('products.json', 'w') as f:
+        #     with open('data/products.json', 'w') as f:
         #         json.dump(prod_list, f, indent=2)
-        #     for chat in chat_id:
+        #     for chat in chat_id_list:
         #         await callback_query.message.delete()
         #         await bot.send_message(chat,
         #                                f'✅ Продукт\n<b>{prod_name}\nID <code>{prod_id}</code></b>\nУдален из списка!',
@@ -271,6 +255,7 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
 
     await callback_query.message.delete()
 
+
 # async def check_price(check_now=0):
 #     prod_list = get_prod_list()
 #     all_games_list = get_all_products(prod_list)
@@ -280,11 +265,11 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
 
 
 async def task():
-    global start_iter
+    start_iter = 1
     global sec_timer
     while True:
-        if start_iter == 1:
-            start_iter = 0
+        if start_iter:
+            start_iter = None
             await asyncio.sleep(sec_timer)
             continue
         else:
