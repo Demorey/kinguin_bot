@@ -1,4 +1,5 @@
 import datetime
+import os
 from time import sleep
 import requests
 import json
@@ -6,12 +7,12 @@ import logging
 from logging.handlers import RotatingFileHandler
 from aiogram_bot import bot, chat_id_list
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from config import API_TOKEN
 
 logging.basicConfig(level=logging.DEBUG, encoding='utf-8',
                     handlers=[RotatingFileHandler('logs/debug_loger.log', maxBytes=5000000, backupCount=1)],
                     format="%(asctime)s - [%(levelname)s] - %(funcName)s: %(lineno)d - %(message)s")
 
+API_TOKEN = os.getenv("API_TOKEN")
 prod_list = None
 
 """Выгружаем в словарь все продукты которые нужно проверять"""
