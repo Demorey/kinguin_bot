@@ -6,4 +6,5 @@ COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install --user -r requirements.txt
 
+
 CMD [ "python", "aiogram_bot.py" ]
