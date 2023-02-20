@@ -5,7 +5,7 @@ import requests
 import json
 import logging
 from logging.handlers import RotatingFileHandler
-from aiogram_bot import bot, chat_id_list
+from create_bot import bot, chat_id_list
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 logging.basicConfig(level=logging.DEBUG, encoding='utf-8',

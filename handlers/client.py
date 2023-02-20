@@ -6,7 +6,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
-from aiogram_bot import dp, bot, chat_id_list, TIMER
+from create_bot import dp, bot, chat_id_list, TIMER
 from handlers.other import get_prod_list, check_prod, add_product, get_prod_name, get_all_products, get_prod_qty, \
     get_prod
 
