@@ -1,7 +1,7 @@
-.idea
-.git
-config.py
-data/products.json
+/.idea
+/.git
 /venv
 .env
-/test.json
+test.json
+config.py
+data/products.json
