@@ -45,7 +45,7 @@ jobs:
                     docker run -dit \
                     --name kinguin_bot \
                     -P \
-                    -v ~/kinguin_bot/logs:/kinguin_bot/logs \
-                    -v ~/kinguin_bot/data:/kinguin_bot/data \
+                    -v ./logs:/kinguin_bot/logs \
+                    -v ./data:/kinguin_bot/data \
                     demorey/kinguin_bot:v1
                     rm -rf build/ 
