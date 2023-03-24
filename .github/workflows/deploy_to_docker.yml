@@ -41,11 +41,11 @@ jobs:
                     docker stop kinguin_bot
                     docker rm kinguin_bot
                     docker rmi demorey/kinguin_bot:v1
-                    docker load -i /docker_containers/build/kinguin_bot.tar
+                    docker load -i ./build/kinguin_bot.tar
                     docker run -dit \
                     --name kinguin_bot \
                     -P \
-                    -v ./logs:/kinguin_bot/logs \
-                    -v ./data:/kinguin_bot/data \
+                    -v ~/kinguin_bot/logs:/kinguin_bot/logs \
+                    -v ~/kinguin_bot/data:/kinguin_bot/data \
                     demorey/kinguin_bot:v1
                     rm -rf build/ 
