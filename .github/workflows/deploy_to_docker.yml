@@ -27,7 +27,7 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: 22
           source: kinguin_bot.tar
-          target: ./kinguin_bot/build
+          target: /docker_containers/kinguin_bot/build
 
       - name: executing remote ssh commands using password
         uses: appleboy/ssh-action@master
@@ -41,11 +41,11 @@ jobs:
                     docker stop kinguin_bot
                     docker rm kinguin_bot
                     docker rmi demorey/kinguin_bot:v1
-                    docker load -i ./build/kinguin_bot.tar
-                    docker run -dit \
-                    --name kinguin_bot \
-                    -P \
-                    -v ~/kinguin_bot/logs:/kinguin_bot/logs \
-                    -v ~/kinguin_bot/data:/kinguin_bot/data \
+                    docker load -i /docker_containers/build/kinguin_bot.tar
+                    docker run -dit                     
+                    --name kinguin_bot
+                    -P
+                    -v /docker_containers/kinguin_bot/logs:/kinguin_bot/logs
+                    -v /docker_containers/kinguin_bot/data:/kinguin_bot/data
                     demorey/kinguin_bot:v1
                     rm -rf build/
