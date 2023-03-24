@@ -48,4 +48,4 @@ jobs:
                     -v ./logs:/kinguin_bot/logs \
                     -v ./data:/kinguin_bot/data \
                     demorey/kinguin_bot:v1
-                    rm -rf build/ 
+                    rm -rf build/
