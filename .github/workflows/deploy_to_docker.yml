@@ -37,7 +37,7 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: 22
           script: |
-                    cd kinguin_bot
+                    cd /docker_containers/kinguin_bot
                     docker stop kinguin_bot
                     docker rm kinguin_bot
                     docker rmi demorey/kinguin_bot:v1
@@ -45,7 +45,7 @@ jobs:
                     docker run -dit                     
                     --name kinguin_bot
                     -P
-                    -v /docker_containers/kinguin_bot/logs:/kinguin_bot/logs
-                    -v /docker_containers/kinguin_bot/data:/kinguin_bot/data
+                    -v ./logs:/kinguin_bot/logs
+                    -v ./data:/kinguin_bot/data
                     demorey/kinguin_bot:v1
                     rm -rf build/
