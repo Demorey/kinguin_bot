@@ -44,6 +44,7 @@ jobs:
                     docker load -i ./build/kinguin_bot.tar
                     docker run -dit \
                     --name kinguin_bot \
+                    --restart always \
                     -P \
                     -v ./logs:/kinguin_bot/logs \
                     -v ./data:/kinguin_bot/data \
