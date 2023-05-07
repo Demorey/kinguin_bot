@@ -92,24 +92,24 @@ def get_prod_qty(product_id) -> int or None:
             sleep(600)
 
 
-"""Парсим в список данные по каждому продукту"""
+"""Парсим в список данные от сервера по каждому продукту"""
 
 
 def get_all_products(prod_list=None, prod_id=None) -> list:
-    all_games_list = []
+    all_games_list_from_server = []
     if prod_id:
         prod = get_prod(prod_id)
-        all_games_list.append(prod)
+        all_games_list_from_server.append(prod)
     elif prod_list:
         for product in prod_list:
             prod = get_prod(product['id'])
-            all_games_list.append(prod)
+            all_games_list_from_server.append(prod)
             sleep(2)
 
-        # with open('test.json', 'w') as f:
-        #     json.dump(all_games_list, f, indent=2)
+    with open('data/all_games_list_from_server.json', 'w') as f:
+        json.dump(all_games_list_from_server, f, indent=2)
 
-    return all_games_list
+    return all_games_list_from_server
 
 
 """Сопоставляем данные из 2х списков, где
@@ -126,71 +126,74 @@ async def check_prod(check_now=None, prod_id=None):
         all_games_list = get_all_products(prod_id=prod_id)
 
     for index, game in enumerate(all_games_list):
+        try:
+            """Проверяем была ли начала проверка по команде check"""
+            if prod_id is None and check_now is None:
+                checking_prod = prod_list[index]
 
-        """Проверяем была ли начала проверка по команде check"""
-        if prod_id is None and check_now is None:
-            checking_prod = prod_list[index]
+                """Проверяем что самая низкая цена не изменилась с прошлой проверки, иначе вывести уведомление"""
+                if game['price'] == checking_prod['last_price']:
+                    continue
 
-            """Проверяем что самая низкая цена не изменилась с прошлой проверки, иначе вывести уведомление"""
-            if game['price'] == checking_prod['last_price']:
-                continue
+            productId = ""
 
-        productId = None
+            """Создаем вложенный список формата [[цена, имя продаца, остатки этого продавца по этой игре], ...]
+                затем сортируем список по возрастанию цены"""
+            s_l = []
+            ostatok = 0
+            for offer in game['offers']:
+                try:
+                    s_l.append([offer['price'], offer['merchantName'], offer['qty']])
+                    if offer['merchantName'] == 'Sar Sar':
+                        productId = offer['offerId']
+                        ostatok = offer['qty']
+                except:
+                    pass
+            s_l.sort()
+            # print(s_l)
 
-        """Создаем вложенный список формата [[цена, имя продаца, остатки этого продавца по этой игре], ...]
-            затем сортируем список по возрастанию цены"""
-        s_l = []
-        ostatok = 0
-        for offer in game['offers']:
-            try:
-                s_l.append([offer['price'], offer['merchantName'], offer['qty']])
-                if offer['merchantName'] == 'Sar Sar':
-                    productId = offer['offerId']
-                    ostatok = offer['qty']
-            except:
-                pass
-        s_l.sort()
-        # print(s_l)
+            """Проходимся по отсортированному списку и формируем строку с данными каждого продавца по этой игре"""
+            x = 0
+            offer_list = ''
+            for s in s_l[:20]:
+                if s[1] == 'Sar Sar':
+                    offer_list = offer_list + f'*->| {x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. |*\n'
+                else:
+                    offer_list = offer_list + f'| {x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. |\n'.replace('.', '.﻿')
+                x += 1
 
-        """Проходимся по отсортированному списку и формируем строку с данными каждого продавца по этой игре"""
-        x = 0
-        offer_list = ''
-        for s in s_l[:20]:
-            if s[1] == 'Sar Sar':
-                offer_list = offer_list + f'<b><u>{x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. |</u></b>\n'
-            else:
-                offer_list = offer_list + f'{x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. |\n'.replace('.', '.﻿')
-            x += 1
+            # if merchantName != "Sar Sar":
+            price_edit_btn = InlineKeyboardButton('Изменить цену',
+                                                  url=f'https://www.kinguin.net/app/merchant/843534/offer/{productId}')
+            # skip_btn = InlineKeyboardButton('Пропустить', callback_data=f'skip_{prod_list.index(checking_prod)}')
+            inline_kb_spec = InlineKeyboardMarkup(row_width=1)
+            inline_kb_spec.row(price_edit_btn)
 
-        # if merchantName != "Sar Sar":
-        price_edit_btn = InlineKeyboardButton('Изменить цену',
-                                              url=f'https://www.kinguin.net/app/merchant/843534/offer/{productId}')
-        # skip_btn = InlineKeyboardButton('Пропустить', callback_data=f'skip_{prod_list.index(checking_prod)}')
-        inline_kb_spec = InlineKeyboardMarkup(row_width=1)
-        inline_kb_spec.row(price_edit_btn)
+            async def alert(c_id, mes_head):
+                text = \
+f'''⚠️ {mes_head} ⚠️ \n 
+<b>{game['name']}</b> \n
+↓ | Цена | Продавец | Остаток | \n
+{offer_list}   
+Всего ключей в продаже:  <b>{game['totalQty']} шт.</b> \n'''
+                await bot.send_message(c_id, text=text, reply_markup=inline_kb_spec, parse_mode='HTML')
 
-        async def alert():
+            #     f'''⚠️ {mes_head} ⚠️ \n
+            # <b>{game['name']}</b> \n
+            # ↓ | Цена | Продавец | Остаток | \n
+            # {offer_list}
+            # Всего ключей в продаже:  <b>{game['totalQty']} шт.</b> \n''',
+            #     reply_markup = inline_kb_spec, parse_mode = 'HTML'
+
             if prod_id or check_now:
-                for c_id in chat_id_list:
-                    await bot.send_message(c_id, text=
-                    f'''⚠️ПРОВЕРКА ПРОДУКТА ⚠ \n 
-<b>{game['name']}</b> \n
-↓ | Цена | Продавец | Остаток | \n
-{offer_list}   
-Всего ключей в продаже:  <b>{game['totalQty']} шт.</b> \n''',
-                                           reply_markup=inline_kb_spec, parse_mode='HTML')
+                mes_head = "ПРОВЕРКА ПРОДУКТА"
             else:
-                for c_id in chat_id_list:
-                    await bot.send_message(c_id, text=
-                    f'''⚠️ИЗМЕНИЛАСЬ ЦЕНА ⚠ \n 
-<b>{game['name']}</b> \n
-↓ | Цена | Продавец | Остаток | \n
-{offer_list}   
-Всего ключей в продаже:  <b>{game['totalQty']} шт.</b> \n''',
-                                           reply_markup=inline_kb_spec, parse_mode='HTML')
-
-        await alert()
-
+                mes_head = "ИЗМЕНИЛАСЬ ЦЕНА"
+            for c_id in chat_id_list:
+                await alert(c_id, mes_head)
+        except Exception as e:
+            await bot.send_message(290768824,
+                                   f"{e}\nВозникла проблема при проверке продукта {game['name']}")
         if prod_id is None:
             checking_prod['last_price'] = game['price']
             checking_prod['qty'] = ostatok

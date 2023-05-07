@@ -10,7 +10,8 @@ from create_bot import dp, bot, chat_id_list, TIMER
 from handlers.other import get_prod_list, check_prod, add_product, get_prod_name, get_all_products, get_prod_qty, \
     get_prod
 
-sec_timer = TIMER
+sec_timer = 10
+msg_to_delete = None
 
 
 class states_name(StatesGroup):
@@ -52,11 +53,12 @@ async def check_now(message: types.Message):
 
             numb_prod = InlineKeyboardMarkup(row_width=5)  # .add(*keys)
             numb_prod.add(InlineKeyboardButton(f'Отмена', callback_data='check_cancel'))
-            await bot.send_message(message.from_user.id,
-                                   f'📜 <b> Список продуктов для проверки:</b>\n \n'
-                                   f'{products}\n'
-                                   '<b>Введите порядковые номера продуктов через пробел для проверки или нажмите "Отмена"</b>',
-                                   parse_mode='HTML', reply_markup=numb_prod)
+            global msg_to_delete
+            msg_to_delete = await bot.send_message(message.from_user.id,
+                                                   f'📜 <b> Список продуктов для проверки:</b>\n \n'
+                                                   f'{products}\n'
+                                                   '<b>Введите порядковые номера продуктов через пробел для проверки или нажмите "Отмена"</b>',
+                                                   parse_mode='HTML', reply_markup=numb_prod)
 
 
 @dp.message_handler(state=states_name.check)
@@ -64,6 +66,7 @@ async def check_choosed(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['prods_to_check'] = message.text.split()
         prod_list = get_prod_list()
+        await msg_to_delete.delete()
         for prod_indx in data['prods_to_check']:
             indx = int(prod_indx) - 1
             if indx > len(prod_list):
