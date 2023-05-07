@@ -10,7 +10,7 @@ from create_bot import dp, bot, chat_id_list, TIMER
 from handlers.other import get_prod_list, check_prod, add_product, get_prod_name, get_all_products, get_prod_qty, \
     get_prod
 
-sec_timer = 10
+sec_timer = TIMER
 msg_to_delete = None
 
 
