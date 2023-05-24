@@ -157,7 +157,7 @@ async def check_prod(check_now=None, prod_id=None):
             offer_list = ''
             for s in s_l[:20]:
                 if s[1] == 'Sar Sar':
-                    offer_list = offer_list + f'*->| {x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. |*\n'
+                    offer_list = offer_list + f'<b>->| {x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. |</b>\n'
                 else:
                     offer_list = offer_list + f'| {x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. |\n'.replace('.', '.﻿')
                 x += 1
@@ -173,7 +173,7 @@ async def check_prod(check_now=None, prod_id=None):
                 text = \
 f'''⚠️ {mes_head} ⚠️ \n 
 <b>{game['name']}</b> \n
-↓ | Цена | Продавец | Остаток | \n
+| ↓ | Цена | Продавец | Остаток | \n
 {offer_list}   
 Всего ключей в продаже:  <b>{game['totalQty']} шт.</b> \n'''
                 await bot.send_message(c_id, text=text, reply_markup=inline_kb_spec, parse_mode='HTML')

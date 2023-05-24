@@ -7,14 +7,13 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
 from create_bot import dp, bot, chat_id_list, TIMER
-from handlers.other import get_prod_list, check_prod, add_product, get_prod_name, get_all_products, get_prod_qty, \
-    get_prod
+from handlers.other import get_prod_list, check_prod, add_product, get_prod_name, get_prod
 
 sec_timer = TIMER
 msg_to_delete = None
 
 
-class states_name(StatesGroup):
+class StatesName(StatesGroup):
     delete = State()
     check = State()
 
@@ -41,7 +40,7 @@ async def check_now(message: types.Message):
                                                f'❌ По id-<b>{product_id}</b> не найдено ни одного продукта!',
                                                parse_mode='HTML')
         else:
-            await states_name.check.set()
+            await StatesName.check.set()
             prod_list = get_prod_list()
             products = ''
             # keys = []
@@ -61,7 +60,7 @@ async def check_now(message: types.Message):
                                                    parse_mode='HTML', reply_markup=numb_prod)
 
 
-@dp.message_handler(state=states_name.check)
+@dp.message_handler(state=StatesName.check)
 async def check_choosed(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['prods_to_check'] = message.text.split()
@@ -125,7 +124,7 @@ async def add_new_prod(message: types.Message):
 @dp.message_handler(commands='delete', state='*')
 async def delete_prod(message: types.Message):
     if message.from_user.id in chat_id_list:
-        await states_name.delete.set()
+        await StatesName.delete.set()
         prod_list = get_prod_list()
         products = ''
         # keys = []
@@ -176,7 +175,7 @@ async def edit_timer(message: types.Message):
                                    f'Таймер до повторной проверки обновлен: {message.get_args()} секунд')
 
 
-@dp.message_handler(state=states_name.delete)
+@dp.message_handler(state=StatesName.delete)
 async def delete_choosed(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['prods_to_delete'] = message.text.split()
