@@ -1,6 +1,8 @@
 import datetime
 import os
 from time import sleep
+from typing import List, Any
+
 import requests
 import json
 import logging
@@ -29,7 +31,7 @@ def get_prod_list() -> dict:
 """Получаем данные по продукту по его id"""
 
 
-def get_prod(product_id) -> dict or None:
+async def get_prod(product_id) -> dict or None:
     headers = {
         'X-Api-Key': API_TOKEN
     }
@@ -41,17 +43,19 @@ def get_prod(product_id) -> dict or None:
         try:
             prod = json.loads(response.content)
             return prod
-        except:
+        except Exception as e:
             logging.debug("Ошибка при получении ответа по продукту - " + product_id)
             print('get_prod', response.content)
             print(datetime.datetime.now(), '- Error, check logs!')
+            await bot.send_message(290768824,
+                                   f"{e}\nВозникла проблема при проверке продукта {product_id}")
             sleep(600)
 
 
 """Получаем название продукта по его id"""
 
 
-def get_prod_name(product_id) -> str or None:
+async def get_prod_name(product_id) -> str or None:
     headers = {
         'X-Api-Key': API_TOKEN
     }
@@ -63,17 +67,19 @@ def get_prod_name(product_id) -> str or None:
         try:
             prod = json.loads(response.content)
             return prod['name']
-        except:
+        except Exception as e:
             logging.debug("Ошибка при получении ответа по продукту - " + product_id)
             print('get_prod_name', response.content)
             print(datetime.datetime.now(), '- Error, check logs!')
+            await bot.send_message(290768824,
+                                   f"{e}\nВозникла проблема при проверке продукта {product_id}")
             sleep(600)
 
 
 """Получаем количество остатков продукта"""
 
 
-def get_prod_qty(product_id) -> int or None:
+async def get_prod_qty(product_id) -> int or None:
     headers = {
         'X-Api-Key': API_TOKEN
     }
@@ -85,26 +91,30 @@ def get_prod_qty(product_id) -> int or None:
         try:
             prod = json.loads(response.content)
             return prod['qty']
-        except:
+        except Exception as e:
             logging.debug("Ошибка при получении ответа по продукту - " + product_id)
             print('get_prod_qty', response.content)
             print(datetime.datetime.now(), '- Error, check logs!')
+            await bot.send_message(290768824,
+                                   f"{e}\nВозникла проблема при проверке продукта {product_id}")
             sleep(600)
 
 
 """Парсим в список данные от сервера по каждому продукту"""
 
 
-def get_all_products(prod_list=None, prod_id=None) -> list:
+async def get_all_products(prod_list=None, prod_id=None) -> list[Any] | None:
     all_games_list_from_server = []
     if prod_id:
-        prod = get_prod(prod_id)
+        prod = await get_prod(prod_id)
         all_games_list_from_server.append(prod)
     elif prod_list:
         for product in prod_list:
-            prod = get_prod(product['id'])
+            prod = await get_prod(product['id'])
             all_games_list_from_server.append(prod)
             sleep(2)
+    else:
+        return None
 
     with open('data/all_games_list_from_server.json', 'w') as f:
         json.dump(all_games_list_from_server, f, indent=2)
@@ -121,9 +131,9 @@ async def check_prod(check_now=None, prod_id=None):
     global prod_list
     if prod_id is None:
         prod_list = get_prod_list()
-        all_games_list = get_all_products(prod_list=prod_list)
+        all_games_list = await get_all_products(prod_list=prod_list)
     else:
-        all_games_list = get_all_products(prod_id=prod_id)
+        all_games_list = await get_all_products(prod_id=prod_id)
 
     for index, game in enumerate(all_games_list):
         try:
@@ -178,12 +188,6 @@ f'''⚠️ {mes_head} ⚠️ \n
 Всего ключей в продаже:  <b>{game['totalQty']} шт.</b> \n'''
                 await bot.send_message(c_id, text=text, reply_markup=inline_kb_spec, parse_mode='HTML')
 
-            #     f'''⚠️ {mes_head} ⚠️ \n
-            # <b>{game['name']}</b> \n
-            # ↓ | Цена | Продавец | Остаток | \n
-            # {offer_list}
-            # Всего ключей в продаже:  <b>{game['totalQty']} шт.</b> \n''',
-            #     reply_markup = inline_kb_spec, parse_mode = 'HTML'
 
             if prod_id or check_now:
                 mes_head = "ПРОВЕРКА ПРОДУКТА"
@@ -204,11 +208,12 @@ f'''⚠️ {mes_head} ⚠️ \n
 async def add_product(product_id):
     prod_list = get_prod_list()
     for prod in prod_list:
-        if prod['name'] == get_prod_name(product_id):
+        name = await get_prod_name(product_id)
+        if prod['name'] == name:
             return f'Продукт {product_id} уже в списке!'
 
-    prod_name = get_prod_name(product_id)
-    prod_qty = get_prod_qty(product_id)
+    prod_name = await get_prod_name(product_id)
+    prod_qty = await get_prod_qty(product_id)
 
     new_prod = {
         "name": prod_name,

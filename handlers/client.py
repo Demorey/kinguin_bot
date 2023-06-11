@@ -32,7 +32,7 @@ async def check_now(message: types.Message):
             else:
                 product_id = message.get_args().split(' ')[0]
                 if product_id:
-                    prod = get_prod(product_id)
+                    prod = await get_prod(product_id)
                     if prod:
                         await check_prod(check_now=1, prod_id=product_id)
                     else:
@@ -98,7 +98,7 @@ async def add_new_prod(message: types.Message):
             return
         product_id.pop(0)
         for prod_id in product_id:
-            prod_name = get_prod_name(prod_id)
+            prod_name = await get_prod_name(prod_id)
             if prod_name is not None:
                 prod_list = get_prod_list()
                 x = 0
@@ -216,8 +216,9 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
             prod_id = callback_query.data.split('_')[2]
             await add_product(prod_id)
             for chat in chat_id_list:
+                name = await get_prod_name(prod_id)
                 await bot.send_message(chat,
-                                       f'✅ Продукт\n<b>{get_prod_name(prod_id)}</b>\nУспешно добавлен в список для проверки!',
+                                       f'✅ Продукт\n<b>{name}</b>\nУспешно добавлен в список для проверки!',
                                        parse_mode='HTML')
         else:
             await callback_query.message.delete()
