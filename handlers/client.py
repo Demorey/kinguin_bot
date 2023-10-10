@@ -43,12 +43,9 @@ async def check_now(message: types.Message):
             await StatesName.check.set()
             prod_list = get_prod_list()
             products = ''
-            # keys = []
             for index, prod in enumerate(prod_list, start=1):
                 prod_name = prod['name']
                 products = products + f'{index} | {prod_name} \n'
-                # btn = InlineKeyboardButton(f'{index}', callback_data=f'check_{index}')
-                # keys.append(btn)
 
             numb_prod = InlineKeyboardMarkup(row_width=5)  # .add(*keys)
             numb_prod.add(InlineKeyboardButton(f'Отмена', callback_data='check_cancel'))
@@ -127,15 +124,11 @@ async def delete_prod(message: types.Message):
         await StatesName.delete.set()
         prod_list = get_prod_list()
         products = ''
-        # keys = []
         for index, prod in enumerate(prod_list, start=1):
             prod_name = prod['name']
             products = products + f'{index} | {prod_name} \n'
 
-            # btn = InlineKeyboardButton(f'{index}', callback_data=f'delete_{index}')
-            # keys.append(btn)
-
-        numb_prod = InlineKeyboardMarkup(row_width=5)  # .add(*keys)
+        numb_prod = InlineKeyboardMarkup(row_width=5)
         numb_prod.add(InlineKeyboardButton(f'Отмена', callback_data='delete_cancel'))
         await bot.send_message(message.from_user.id,
                                '❌ <b>Список продуктов для удаления:</b>\n \n'
@@ -227,19 +220,7 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
     elif callback_query.data.startswith('delete_'):
         if callback_query.data.split('_')[1] == 'cancel':
             await state.finish()
-        # else:
-        #     prod_indx = int(callback_query.data.split('_')[1])
-        #     prod_list = get_prod_list()
-        #     prod_on_remove = prod_list.pop(prod_indx - 1)
-        #     prod_name = prod_on_remove['name']
-        #     prod_id = prod_on_remove['id']
-        #     with open('data/products.json', 'w') as f:
-        #         json.dump(prod_list, f, indent=2)
-        #     for chat in chat_id_list:
-        #         await callback_query.message.delete()
-        #         await bot.send_message(chat,
-        #                                f'✅ Продукт\n<b>{prod_name}\nID <code>{prod_id}</code></b>\nУдален из списка!',
-        #                                parse_mode='HTML')
+
 
     elif callback_query.data.startswith('check_'):
         if callback_query.data.startswith('check_all_'):
@@ -248,23 +229,23 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
         else:
             if callback_query.data.split('_')[1] == 'cancel':
                 await state.finish()
-        #     else:
-        #         prod_indx = int(callback_query.data.split('_')[1])
-        #         prod_list = get_prod_list()
-        #         prod_on_check = prod_list.pop(prod_indx - 1)
-        #         prod_id = prod_on_check['id']
-        #         await callback_query.message.delete()
-        #         await check_prod(check_now=1, prod_id=prod_id)
 
     await callback_query.message.delete()
 
 
-# async def check_price(check_now=0):
-#     prod_list = get_prod_list()
-#     all_games_list = get_all_products(prod_list)
-#     for game in all_games_list:
-#         checking_prod = prod_list[all_games_list.index(game)]
-#         await check_prod(check_now)
+@dp.message_handler()
+async def products_check(message: types.Message):
+    if message.from_user.id in chat_id_list:
+        product_id_list = message.text.split(' ')
+        if product_id_list:
+            for product_id in product_id_list:
+                prod = await get_prod(product_id)
+                if prod:
+                    await check_prod(check_now=1, prod_id=product_id)
+                else:
+                    await bot.send_message(message.from_user.id,
+                                           f'❌ По id-<b>{product_id}</b> не найдено ни одного продукта!',
+                                           parse_mode='HTML')
 
 
 async def task():
