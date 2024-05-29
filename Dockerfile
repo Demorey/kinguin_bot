@@ -1,9 +1,8 @@
-FROM python:3.10-slim-buster
+FROM python:3.11.8-slim-bullseye
 COPY . ./kinguin_bot
 WORKDIR /kinguin_bot
-COPY requirements.txt .
 
 RUN pip install --upgrade pip
-RUN pip install --user -r requirements.txt
+RUN pip install --user --no-warn-script-location -r requirements.txt
 
 CMD [ "python", "aiogram_bot.py" ]

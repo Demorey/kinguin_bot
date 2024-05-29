@@ -5,3 +5,5 @@
 test.json
 config.py
 data/products.json
+/logs/
+/data/
