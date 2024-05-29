@@ -1,7 +1,6 @@
 import asyncio
 import json
-from aiogram import types
-from aiogram.types import InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton, CallbackQuery, Message
 
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup, default_state
@@ -21,12 +20,12 @@ class StatesName(StatesGroup):
 
 
 @dp.message(Command('start'))
-async def command_start(message: types.Message):
+async def command_start(message: Message):
     await bot.send_message(message.from_user.id, f'Ваш id: {message.from_user.id} \n /help - узнать комманды')
 
 
 @dp.message(Command('check'))
-async def check_now(message: types.Message, command: CommandObject, state: FSMContext):
+async def check_now(message: Message, command: CommandObject, state: FSMContext):
     if message.from_user.id in chat_id_list:
         if command.args:
             if len(command.args.split(' ')) > 1:
@@ -60,7 +59,7 @@ async def check_now(message: types.Message, command: CommandObject, state: FSMCo
 
 
 @dp.message(StateFilter(StatesName.check))
-async def check_choosed(message: types.Message, state: FSMContext):
+async def check_choosed(message: Message, state: FSMContext):
     async with state.get_data() as data:
         data['prods_to_check'] = message.text.split()
         prod_list = get_prod_list()
@@ -77,7 +76,7 @@ async def check_choosed(message: types.Message, state: FSMContext):
 
 
 @dp.message(Command('check_all'))
-async def check_now(message: types.Message):
+async def check_now(message: Message):
     if message.from_user.id in chat_id_list:
         choose = InlineKeyboardBuilder()
         choose.row(InlineKeyboardButton(text='✅', callback_data='check_all_confirm'),
@@ -91,7 +90,7 @@ async def check_now(message: types.Message):
 
 
 @dp.message(Command('add'))
-async def add_new_prod(message: types.Message):
+async def add_new_prod(message: Message):
     if message.from_user.id in chat_id_list:
         product_id = message.text.split(' ')
         if len(product_id) < 2:
@@ -124,7 +123,7 @@ async def add_new_prod(message: types.Message):
 
 
 @dp.message(Command('delete'), StateFilter(default_state))
-async def delete_prod(message: types.Message, state: FSMContext):
+async def delete_prod(message: Message, state: FSMContext):
     if message.from_user.id in chat_id_list:
         await state.set_state(StatesName.delete)
         prod_list = get_prod_list()
@@ -143,7 +142,7 @@ async def delete_prod(message: types.Message, state: FSMContext):
 
 
 @dp.message(Command('help'))
-async def help(message: types.Message):
+async def help(message: Message):
     if message.from_user.id in chat_id_list:
         await bot.send_message(message.from_user.id,
                                f'''<b>Команды для управления:</b>\n
@@ -158,13 +157,13 @@ async def help(message: types.Message):
 
 
 @dp.message(Command('time'))
-async def check_time(message: types.Message):
+async def check_time(message: Message):
     if message.from_user.id in chat_id_list:
         await bot.send_message(message.from_user.id, f'Текущий таймер: {sec_timer} секунд')
 
 
 @dp.message(Command('timer'))
-async def edit_timer(message: types.Message, command: CommandObject):
+async def edit_timer(message: Message, command: CommandObject):
     if message.from_user.id in chat_id_list and command.args.isdigit():
         global sec_timer
         sec_timer = int(command.args)
@@ -174,7 +173,7 @@ async def edit_timer(message: types.Message, command: CommandObject):
 
 
 @dp.message(StateFilter(StatesName.delete))
-async def delete_choosed(message: types.Message, state: FSMContext):
+async def delete_choosed(message: Message, state: FSMContext):
     async with state.get_data() as data:
         data['prods_to_delete'] = message.text.split()
         prod_list = get_prod_list()
@@ -199,8 +198,8 @@ async def delete_choosed(message: types.Message, state: FSMContext):
         await state.clear()
 
 
-@dp.callback_query(lambda call: call.data, StateFilter(default_state))
-async def process_callback(callback_query: types.CallbackQuery, state: FSMContext):
+@dp.callback_query(lambda call: call.data)
+async def process_callback(callback_query: CallbackQuery, state: FSMContext):
     if callback_query.data.startswith('skip_'):
         prod_list = get_prod_list()
         index = int(callback_query.data.split('skip_')[1])
@@ -221,6 +220,7 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
         else:
             await callback_query.message.delete()
             await bot.send_message(callback_query.from_user.id, '❌ Добавление отменено!')
+        await state.clear()
 
     elif callback_query.data.startswith('delete_'):
         if callback_query.data.split('_')[1] == 'cancel':
@@ -238,7 +238,7 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
 
 
 @dp.message()
-async def products_check(message: types.Message):
+async def products_check(message: Message):
     if message.from_user.id in chat_id_list:
         product_id_list = message.text.split(' ')
         if product_id_list:
