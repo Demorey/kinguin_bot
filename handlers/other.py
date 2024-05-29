@@ -1,18 +1,15 @@
 import datetime
 import os
 from time import sleep
-from typing import List, Any
+from typing import Any
 
 import requests
 import json
 import logging
-from logging.handlers import RotatingFileHandler
-from create_bot import bot, chat_id_list
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-logging.basicConfig(level=logging.DEBUG, encoding='utf-8',
-                    handlers=[RotatingFileHandler('logs/debug_loger.log', maxBytes=5000000, backupCount=1)],
-                    format="%(asctime)s - [%(levelname)s] - %(funcName)s: %(lineno)d - %(message)s")
+from create_bot import bot, chat_id_list
+from aiogram.types import InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 API_TOKEN = os.getenv("API_TOKEN")
 prod_list = None
@@ -167,27 +164,24 @@ async def check_prod(check_now=None, prod_id=None):
             offer_list = ''
             for s in s_l[:20]:
                 if s[1] == 'Sar Sar':
-                    offer_list = offer_list + f'<b>->| {x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. |</b>\n'
+                    offer_list = offer_list + f'<b>✅ | {x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. | ✅</b>\n'
                 else:
                     offer_list = offer_list + f'| {x + 1} | {s[0]}€ | {s[1]} | {s[2]} шт. |\n'.replace('.', '.﻿')
                 x += 1
 
-            # if merchantName != "Sar Sar":
-            price_edit_btn = InlineKeyboardButton('Изменить цену',
-                                                  url=f'https://www.kinguin.net/app/merchant/843534/offer/{productId}')
+            inline_kb_spec = InlineKeyboardBuilder()
             # skip_btn = InlineKeyboardButton('Пропустить', callback_data=f'skip_{prod_list.index(checking_prod)}')
-            inline_kb_spec = InlineKeyboardMarkup(row_width=1)
-            inline_kb_spec.row(price_edit_btn)
+            inline_kb_spec.row(InlineKeyboardButton(text='Изменить цену',
+                                                    url=f'https://www.kinguin.net/app/merchant/843534/offer/{productId}'))
 
             async def alert(c_id, mes_head):
                 text = \
-f'''⚠️ {mes_head} ⚠️ \n 
+                    f'''⚠️ {mes_head} ⚠️ \n 
 <b>{game['name']}</b> \n
 | ↓ | Цена | Продавец | Остаток | \n
 {offer_list}   
 Всего ключей в продаже:  <b>{game['totalQty']} шт.</b> \n'''
-                await bot.send_message(c_id, text=text, reply_markup=inline_kb_spec, parse_mode='HTML')
-
+                await bot.send_message(c_id, text=text, reply_markup=inline_kb_spec.as_markup(), parse_mode='HTML')
 
             if prod_id or check_now:
                 mes_head = "ПРОВЕРКА ПРОДУКТА"
