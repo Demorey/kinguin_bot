@@ -9,6 +9,7 @@ from aiogram.filters import Command, StateFilter, CommandObject
 
 from create_bot import dp, bot, chat_id_list, TIMER
 from handlers.other import get_prod_list, check_prod, add_product, get_prod_name, get_prod
+from keyboards import kb_check_product, kb_delete
 
 sec_timer = TIMER
 msg_to_delete = None
@@ -48,45 +49,38 @@ async def check_now(message: Message, command: CommandObject, state: FSMContext)
                 prod_name = prod['name']
                 products = products + f'{index} | {prod_name} \n'
 
-            numb_prod = InlineKeyboardBuilder()
-            numb_prod.row(InlineKeyboardButton(text='Отмена', callback_data='check_cancel'))
             global msg_to_delete
             msg_to_delete = await bot.send_message(message.from_user.id,
                                                    f'📜 <b> Список продуктов для проверки:</b>\n \n'
                                                    f'{products}\n'
                                                    '<b>Введите порядковые номера продуктов через пробел для проверки или нажмите "Отмена"</b>',
-                                                   parse_mode='HTML', reply_markup=numb_prod.as_markup())
+                                                   parse_mode='HTML', reply_markup=check_product.check_cancel)
 
 
 @dp.message(StateFilter(StatesName.check))
 async def check_choosed(message: Message, state: FSMContext):
-    async with state.get_data() as data:
-        data['prods_to_check'] = message.text.split()
-        prod_list = get_prod_list()
-        await bot.delete_message(msg_to_delete)
-        for prod_indx in data['prods_to_check']:
-            indx = int(prod_indx) - 1
-            if indx > len(prod_list):
-                continue
-            prod_to_check = prod_list[indx]
-            prod_id = prod_to_check['id']
-            await check_prod(check_now=1, prod_id=prod_id)
+    data = await state.get_data()
+    data['prods_to_check'] = message.text.split()
+    prod_list = get_prod_list()
+    await bot.delete_message(chat_id=msg_to_delete.chat.id, message_id=msg_to_delete.message_id)
+    for prod_indx in data['prods_to_check']:
+        indx = int(prod_indx) - 1
+        if indx > len(prod_list):
+            continue
+        prod_to_check = prod_list[indx]
+        prod_id = prod_to_check['id']
+        await check_prod(check_now=1, prod_id=prod_id)
 
-        await state.clear()
+    await state.clear()
 
 
 @dp.message(Command('check_all'))
 async def check_now(message: Message):
     if message.from_user.id in chat_id_list:
-        choose = InlineKeyboardBuilder()
-        choose.row(InlineKeyboardButton(text='✅', callback_data='check_all_confirm'),
-                   InlineKeyboardButton(text='❌', callback_data='check_all_cancel')
-                   )
-
         await bot.send_message(message.from_user.id,
                                f'Вы уверены что хотите сделать проверку всех продуктов?',
                                parse_mode='HTML',
-                               reply_markup=choose.as_markup())
+                               reply_markup=kb_check_product.check_all_confirm)
 
 
 @dp.message(Command('add'))
@@ -132,13 +126,12 @@ async def delete_prod(message: Message, state: FSMContext):
             prod_name = prod['name']
             products = products + f'{index} | {prod_name} \n'
 
-        numb_prod = InlineKeyboardBuilder()
-        numb_prod.add(InlineKeyboardButton(text='Отмена', callback_data='delete_cancel'))
-        await bot.send_message(message.from_user.id,
-                               '❌ <b>Список продуктов для удаления:</b>\n \n'
-                               f'{products}\n'
-                               '<b>Введите порядковые номера продуктов через пробел для удаления или нажмите "Отмена"</b>',
-                               parse_mode='HTML', reply_markup=numb_prod.as_markup())
+        global msg_to_delete
+        msg_to_delete = await bot.send_message(message.from_user.id,
+                                               '❌ <b>Список продуктов для удаления:</b>\n \n'
+                                               f'{products}\n'
+                                               '<b>Введите порядковые номера продуктов через пробел для удаления или нажмите "Отмена"</b>',
+                                               parse_mode='HTML', reply_markup=kb_delete.delete_cancel)
 
 
 @dp.message(Command('help'))
@@ -174,27 +167,28 @@ async def edit_timer(message: Message, command: CommandObject):
 
 @dp.message(StateFilter(StatesName.delete))
 async def delete_choosed(message: Message, state: FSMContext):
-    async with state.get_data() as data:
-        data['prods_to_delete'] = message.text.split()
-        prod_list = get_prod_list()
-        removed = ''
-        x = 1
-        for prod_indx in data['prods_to_delete']:
-            indx = int(prod_indx) - x
-            if indx > len(prod_list):
-                continue
-            prod_on_remove = prod_list.pop(indx)
-            prod_name = prod_on_remove['name']
-            prod_id = prod_on_remove['id']
-            removed += f'✅ Продукт\n<b>{prod_name}\nID <code>{prod_id}</code></b>\nУдален из списка!\n\n'
-            x += 1
+    data = await state.get_data()
+    data['prods_to_delete'] = message.text.split()
+    prod_list = get_prod_list()
+    removed = ''
+    x = 1
+    for prod_indx in data['prods_to_delete']:
+        indx = int(prod_indx) - x
+        if indx > len(prod_list):
+            continue
+        prod_on_remove = prod_list.pop(indx)
+        prod_name = prod_on_remove['name']
+        prod_id = prod_on_remove['id']
+        removed += f'✅ Продукт\n<b>{prod_name}\nID <code>{prod_id}</code></b>\nУдален из списка!\n\n'
+        x += 1
 
-        if removed:
-            with open('data/products.json', 'w') as f:
-                json.dump(prod_list, f, indent=2)
-            for chat in chat_id_list:
-                await bot.send_message(chat, removed, parse_mode='HTML')
+    if removed:
+        with open('data/products.json', 'w') as f:
+            json.dump(prod_list, f, indent=2)
+        for chat in chat_id_list:
+            await bot.send_message(chat, removed, parse_mode='HTML')
 
+        await bot.delete_message(chat_id=msg_to_delete.chat.id, message_id=msg_to_delete.message_id)
         await state.clear()
 
 
