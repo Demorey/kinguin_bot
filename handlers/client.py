@@ -54,7 +54,7 @@ async def check_now(message: Message, command: CommandObject, state: FSMContext)
                                                    f'📜 <b> Список продуктов для проверки:</b>\n \n'
                                                    f'{products}\n'
                                                    '<b>Введите порядковые номера продуктов через пробел для проверки или нажмите "Отмена"</b>',
-                                                   parse_mode='HTML', reply_markup=check_product.check_cancel)
+                                                   parse_mode='HTML', reply_markup=kb_check_product.check_cancel)
 
 
 @dp.message(StateFilter(StatesName.check))
