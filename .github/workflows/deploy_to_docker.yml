@@ -17,7 +17,7 @@ jobs:
           TIMER: ${{ secrets.TIMER }}
         run: |
           printf "BOT_TOKEN=\"$BOT_TOKEN\"\nAPI_TOKEN=\"$API_TOKEN\"\nCHAT_ID=\"$CHAT_ID\"\nTIMER=\"$TIMER\"" > .env
-          docker build --no-cache -t demorey/kinguin_bot:v1 .
+          docker build -t demorey/kinguin_bot:v1 .
           docker save -o kinguin_bot.tar demorey/kinguin_bot:v1
           chmod 664 kinguin_bot.tar
       - name: scp docker image to DO
